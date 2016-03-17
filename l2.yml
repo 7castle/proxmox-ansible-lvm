@@ -1,0 +1,41 @@
+---
+- hosts: pve
+  vars:
+   - test: 'test'
+  tasks:
+   - name: Allocate Free Size
+     lvol: vg=pve lv=data size=8G force=yes
+     register: free
+
+   - name: creating new /var LVM logical volume
+     lvol: vg=pve lv=lv_var size=512
+     when: free|success
+     register: lv_var
+   
+   - name: creating new /var/log LVM logical volume
+     lvol: vg=pve lv=lv_var_log size=512
+     when: free|success
+     register: lv_var_log
+  
+   - name: creating new /var/log/audit LVM logical volume
+     lvol: vg=pve lv=lv_var_log_audit size=512
+     when: free|success
+     register: lv_var_log_audit     
+
+   - name: Mount /var to lv_var
+     mount: name=/var src=/dev/pve/lv_var fstype=ext4 state=present
+     when: lv_var|success
+     notify:
+      - Show lv_var
+
+   - name: Mount /var/log to lv_var_log
+     mount: name=/var/log src=/dev/pve/lv_var_log fstype=ext4 state=present
+     when: lv_var_log|success
+
+   - name: Mount /var/log/audit to lv_var_log_audit
+     mount: name=/var/log/audit src=/dev/pve/lv_var_log_audit fstype=ext4 state=present
+     when: lv_var_log_audit|success
+
+  handlers:
+   - name: Show lv_var
+     shell: 'lvdisplay'
